@@ -1,91 +1,304 @@
-# Software Requirements Specification (SRS)
+# MST SaralChain — Enterprise SRS (Software Requirements Specification)
 
-**Project Title:** MST L1 Enterprise Supply Chain & Cryptographic Provenance Platform  
-**Document Version:** 1.1.0-Enterprise-Production  
+## Product Name
+MST SaralChain Global Logistics Infrastructure
 
----
-
-## 1. Introduction & Objectives
-
-### 1.1 Purpose
-This document specifies the functional, non-functional, security, and integration requirements for an enterprise-level supply chain transparency platform. The platform handles real-time IoT tracking, customs validation, and cryptocurrency fee settlements natively on the MST Layer-1 EVM Blockchain.
-
-### 1.2 System Scope
-The system operates as a zero-trust middleware framework. It bridges physical supply chain items to digital records without forcing operator-level field workers to manage Web3 wallets. Sensitive transactional and environmental details remain in a secure, serverless PostgreSQL database, while immutable cryptographic proofs of integrity are anchored directly to the MST Testnet ledger.
+## Tagline
+Blockchain-Powered Supply Chain Transparency & Settlement Ecosystem
 
 ---
 
-## 2. Overall Description & System States
+## 1. Project Overview
+### Vision
+Build a scalable enterprise-grade supply chain infrastructure on the MST Testnet that eliminates counterfeit goods, prevents data silos, enables real-time physical verification via QR codes, and automates international settlements through trustless crypto escrows.
 
-### 2.1 Product Perspective
-The platform connects three distinct architectural zones:
-1.  **The Ingestion Layer:** Exposes protected API endpoints to IoT sensors, mobile camera scanners, and customs agents.
-2.  **The Queue & Relayer Layer:** Processes incoming transactions through a queue using Redis and BullMQ, signing and broadcasting them sequentially to the L1 chain.
-3.  **The Transparency Layer:** A public, wallet-less interface where any auditor or consumer can trace a product's provenance timeline.
+The platform must support:
+- FMCG (Fast-Moving Consumer Goods) tracking
+- Pharmaceutical cold-chain monitoring
+- Luxury goods authentication
+- Agricultural export compliance
+- Automotive parts tracking
+- International Customs document management
 
-### 2.2 Functional State-Transition Matrix
-Every tracking batch moves through a strict lifecycle locked down by the core smart contract logic:
+The system should function as a multi-tenant platform where manufacturers, logistics providers, retailers, and customs agencies can interact seamlessly to manage, verify, and settle physical goods transactions via blockchain.
 
+---
+
+## 2. Objectives
+### Primary Goals
+- Eliminate counterfeit products from the supply chain
+- Prevent unverified manual data entry and "paper-based" fraud
+- Enable real-time blockchain verification of GPS & Temperature data
+- Provide a trustless Escrow settlement layer bypassing archaic banking LCs
+- Allow non-crypto retail users to scan QR codes seamlessly via mobile
+- Create enterprise-ready Multi-Registry smart contract architecture
+- Enable API integration with existing ERP systems (SAP, Oracle)
+
+---
+
+## 3. Target Users
+### User Types
+1. **MST Super Admin:** Controls the ecosystem, grants top-level `GOVERNANCE_ROLE`.
+2. **Supplier / Manufacturer:** Creates physical batches, mints initial blockchain records.
+3. **Logistics & Transporters:** Updates GPS/telemetry data, manages physical transit.
+4. **Customs Officials:** Reviews and attaches IPFS compliance documents to border crossings.
+5. **Retailers / Buyers:** Funds Escrow smart contracts and receives physical inventory.
+6. **End Consumers:** Scans product QR codes to verify authenticity.
+7. **Finance Teams:** Manages the `tMST` treasury, payments, and settlements.
+
+---
+
+## 4. Core System Architecture
+### Platform Components
+
+```mermaid
+graph TD
+    subgraph Frontend ["Client Presentation Layer"]
+        A["Admin Dashboard"]
+        B["Supplier Portal"]
+        C["Logistics App"]
+        D["Retailer Dashboard"]
+        E["Consumer QR Scanner"]
+    end
+
+    subgraph Backend ["Enterprise API Gateway"]
+        F["NestJS REST APIs"]
+        G["BullMQ + Redis Queue"]
+    end
+
+    subgraph Storage ["Hybrid Data Layer"]
+        H[("Supabase PostgreSQL")]
+        I[("IPFS Node (Pinata)")]
+    end
+
+    subgraph Blockchain ["MST Testnet Multi-Registry"]
+        J["GovernanceRegistry"]
+        K["IdentityRegistry"]
+        L["BatchRegistry"]
+        M["TelemetryRegistry"]
+        N["DocumentRegistry"]
+        O["EscrowRegistry"]
+        P["CarbonRegistry"]
+    end
+
+    A & B & C & D & E <-->|"REST/JWT"| F
+    F -->|"Query/Insert"| H
+    F -->|"Upload"| I
+    F -->|"Enqueue TX"| G
+    G -->|"EVM Execution"| Blockchain
 ```
-[ UNINITIALIZED ]
-       │
-  (createBatch) ────> [ SUPPLIED ] (Raw materials generated)
-                            │
-                  (processManufacturing) ──> [ MANUFACTURED ] (Finished goods packed)
-                                                    │
-                                              (startTransit)
-                                                    ▼
-                                              [ IN_TRANSIT ] <── (updateTelemetry)
-                                                    │
-                                         (attachCustomsDocument)
-                                                    ▼
-                                            [ CUSTOMS_CLEARED ]
-                                                    │
-                                             (receiveAtRetail)
-                                                    ▼
-                                             [ RETAIL_READY ] (Arrived at store)
-                                                    │
-                                             (sellToConsumer)
-                                                    ▼
-                                                 [ SOLD ] (Escrow released/closed)
-```
+
+| Component | Description |
+|-----------|-------------|
+| **Admin Dashboard** | MST Core Governance and KYB (Know Your Business) system |
+| **Supplier Portal** | Batch creation, GS1 GTIN generation, and dispatch management |
+| **Logistics App** | Real-time GPS and IoT temperature telemetry ingestion |
+| **Consumer QR Scanner** | Zero-cost HTML5-QRCode mobile/web verification interface |
+| **Blockchain Layer** | MST Testnet Multi-Registry smart contracts (Governance, Identity, Batch, Escrow, Carbon) |
+| **API Gateway** | NestJS high-frequency REST APIs for IoT and ERP integration |
+| **Queuing Engine** | BullMQ + Upstash Redis to prevent EVM Nonce collisions |
+| **Database Engine** | Supabase PostgreSQL for relational analytics and geospatial data |
 
 ---
 
-## 3. Detailed Functional Requirements
-
-### 3.1 Smart Contract Layer (SupplyChain.sol)
-*   **FR-SC-1 (Role-Based Access Control):** The system must use OpenZeppelin’s AccessControl. It must enforce the following roles:
-    *   `SUPPLIER_ROLE`: Can initialize batches (`createBatch`).
-    *   `MANUFACTURER_ROLE`: Can process raw materials into goods (`processManufacturing`).
-    *   `LOGISTICS_ROLE`: Can initiate transit (`startTransit`) and update telemetry (`transferCustody`).
-    *   `CUSTOMS_AGENT_ROLE`: Can verify and attach border compliance records (`attachCustomsDocument`).
-    *   `RETAILER_ROLE`: Can receive items at retail stores (`receiveAtRetail`) and mark them sold (`sellToConsumer`).
-    *   `DEFAULT_ADMIN_ROLE`: Can register stakeholder addresses and manage contract parameters.
-*   **FR-SC-2 (State Transition Enforcement):** The contract must enforce the sequential flow of goods. Any function call that bypasses the sequence (e.g., trying to mark an unmanufactured batch as `InTransit`) must fail.
-*   **FR-SC-3 (State Locking):** The system must block updates to a batch once its state is marked as `Sold`.
-*   **FR-SC-4 (tMST Escrow System):** The contract must support basic escrow. An administrator or buyer can deposit `tMST` tokens into the contract linked to a specific `batchId`. The contract will hold these funds and automatically release them to the configured beneficiary wallet when the stage updates to `RetailReady` or `Sold`.
-
-### 3.2 NestJS Enterprise Backend Core
-*   **FR-BE-1 (FIFO Transaction Queuing):** The backend must pass all incoming blockchain updates into a FIFO queue using BullMQ. The processor must sign transactions sequentially using a single relayer wallet to eliminate nonce collisions.
-*   **FR-BE-2 (Cryptographic Anchoring):** The backend must compute a deterministic `keccak256` hash of off-chain database objects before sending them to the blockchain:
-    $$\text{DataHash} = \text{keccak256}(\text{bytes}(\text{JSON.stringify}(\text{telemetryPayload})))$$
-*   **FR-BE-3 (Payment Integration):** The platform must call ChainPay.biz to create invoice requests and update local payment records to `PAID` via webhook calls.
-
-### 3.3 Next.js Proof-of-Concept Frontend
-*   **FR-FE-1 (Public Verification Portal):** The frontend must allow public lookups of Batch IDs without requiring MetaMask or gas.
-*   **FR-FE-2 (Data Consistency Check):** The frontend must hash the database payload locally and compare it to the blockchain `dataHash`. If they do not match, it must flag the timeline step as altered.
-*   **FR-FE-3 (PWA Mobile Scanner):** The portal must be responsive and contain a camera scanning interface using `html5-qrcode` to enable on-site scanning of batch QR codes.
+## 5. MST Blockchain Integration
+### MST Testnet Usage
+The platform must integrate directly with:
+- **MST Testnet Blockchain**
+- **MST Bridge-Key Wallet** (for participant authentication and EIP-712 Meta-Transactions)
+- **tMST Native Token** (for escrow payments)
 
 ---
 
-## 4. System Security & Threat Modeling (STRIDE)
+## 6. Functional Modules
 
-| Threat Category | Potential Risk Vector | Enterprise Mitigation Mechanism |
-|---|---|---|
-| **Spoofing Identity** | Attackers mimicking a scanner to push updates. | Ephemeral HMAC signing tokens for devices. |
-| **Tampering** | A database administrator altering history records. | Frontend cross-references database logs against on-chain hashes. |
-| **Repudiation** | A worker denying they signed off on a shipment. | On-chain logs tie each transition to the handler's public address. |
-| **Information Disclosure** | Competitors reading business data on-chain. | Zero plain-text storage. Only anonymized hashes are on-chain. |
-| **Denial of Service** | IoT sensors overloading the network. | BullMQ queue acts as a buffer, throttling L1 transactions. |
-| **Elevation of Privilege** | A logistics worker trying to verify customs documents. | Strict OpenZeppelin Role-Based Access checks on-chain. |
+### MODULE 1 — GOVERNANCE & IDENTITY ADMIN
+| Feature | Description |
+|---------|-------------|
+| **KYB Approval** | Organization KYC/KYB approval and wallet verification |
+| **Role Assignment** | On-chain assignment of `SUPPLIER_ROLE`, `CUSTOMS_ROLE`, etc. |
+| **Contract Upgrades** | Governance over Smart Contract Upgrades (UUPS) |
+| **Dispute Management** | Global dispute overrides and Escrow refund authorizations |
+| **API Keys** | Issuance of secure API keys for IoT devices |
+
+### MODULE 2 — SUPPLIER DASHBOARD
+| Feature | Description |
+|---------|-------------|
+| **Batch Creation** | Mint physical batches (Quantity, Unit, Production, Expiry) |
+| **GS1 Integration** | Assign global GTIN barcodes to product batches |
+| **ERP Sync** | Attach internal ERP Lot Numbers for backwards compatibility |
+| **Logistics Handoff**| Cryptographically transfer possession to Transporters |
+| **Escrow Tracking** | Track pending `tMST` Escrow deposits from Retailers |
+
+### MODULE 3 — LOGISTICS, TELEMETRY & CARBON TRACKING
+| Feature | Description |
+|---------|-------------|
+| **GPS Tracking** | High-frequency GPS ingestion from IoT sensors |
+| **Condition Monitoring**| Real-time Temperature/Humidity tracking against thresholds |
+| **Alert Systems** | Automated alerts for condition breaches (e.g., Temp > 8°C) |
+| **Hash Anchoring** | Batch-hashing telemetry data and sequential EVM anchoring |
+| **Carbon Footprint** | **Tokenized carbon calculation across the transit lifecycle** |
+
+### MODULE 4 — CUSTOMS & COMPLIANCE PORTAL
+**Document Features**
+- Upload Phytosanitary Certificates and Bills of Lading
+- Pin documents to IPFS (InterPlanetary File System)
+- Map IPFS CIDs to specific `batchId` on the `DocumentRegistry`
+- Cryptographic border clearance approvals
+
+### MODULE 5 — RETAILER & ESCROW DASHBOARD
+**Finance & Settlement Features**
+- Purchase Order creation
+- Deposit `tMST` funds into `EscrowRegistry`
+- Scan QR code upon delivery to trigger `RetailReady` state
+- Automated smart contract fund release to Supplier
+
+### MODULE 6 — CONSUMER VERIFICATION APP
+**Scanner Features**
+- Zero-app-install HTML5-QRCode web scanner
+- Read real-time blockchain validation
+- View interactive maps of the product's journey
+- View immutable IPFS compliance certificates
+- Alert on fake or duplicate QR codes
+
+---
+
+## 7. Smart Contract Requirements
+### Required Contracts (Multi-Registry)
+| Contract | Purpose |
+|----------|---------|
+| `GovernanceRegistry` | Core Admin and global Access Control |
+| `IdentityRegistry` | Maps wallets to verified corporate identities |
+| `BatchRegistry` | Core asset metadata, current owner, and lifecycle stage |
+| `TelemetryRegistry`| Anchors keccak256 hashes of IoT data |
+| `DocumentRegistry` | Links batch IDs to IPFS CIDs for compliance |
+| `EscrowRegistry` | Holds deposits and automates `tMST` settlements |
+| `CarbonRegistry` | **Tokenized carbon footprint calculation across the transit lifecycle** |
+
+---
+
+## 8. Database Design
+### Core Tables (PostgreSQL / Supabase)
+**Required Tables:**
+- `users`
+- `organizations`
+- `batches`
+- `telemetry_logs`
+- `customs_documents`
+- `escrow_transactions`
+- `api_keys`
+- `fraud_logs`
+
+---
+
+## 9. Security Requirements
+### Mandatory Security
+**Authentication:**
+- JWT authentication for Web2 API endpoints
+- Role-based access control (RBAC) on-chain
+- EIP-4361 (Sign-In with Ethereum)
+
+**Blockchain Security:**
+- Protection against Reentrancy (CEI pattern in Escrows)
+- Nonce collision prevention via BullMQ
+- Gas-optimized batch processing
+
+**Infrastructure Security:**
+- Rate limiting on IoT ingestion
+- Supabase connection pooling (pgbouncer)
+
+---
+
+## 10. Performance Requirements
+| Feature | Requirement |
+|---------|-------------|
+| **QR Scan Response** | < 1 second |
+| **Telemetry Ingestion** | Support 1,000+ IoT pings/sec |
+| **Blockchain Sync** | Batched hashes every 60 seconds |
+| **Dashboard Load Time**| < 2 seconds |
+
+---
+
+## 11. Multi-Tenant SaaS Requirements
+### White Label Support
+Each corporate participant (Supplier/Retailer) should have:
+- Isolated analytics
+- Custom integration API keys
+- Role-scoped data visibility
+
+---
+
+## 12. Non-Functional Requirements
+**Scalability:**
+- System must support millions of physical products without EVM bloat (hybrid architecture).
+- Must handle global, concurrent logistics data streams.
+
+**Reliability:**
+- 99.9% API uptime via Vercel Edge.
+- Robust BullMQ retry mechanics for failed blockchain transactions.
+
+**Accessibility:**
+- Mobile-responsive dashboards for warehouse workers.
+- Cross-browser QR compatibility without native app installation.
+
+---
+
+## 13. Future Expansion Capabilities
+### Supported Future Use Cases
+- **Trade Finance & Factoring:** Using blockchain batches as collateral for instant DeFi loans.
+- **Dynamic NFTs (dNFTs):** Luxury goods represented as visual NFTs that update based on maintenance records.
+- **AI Supply Chain Routing:** Predictive analytics to optimize logistics paths based on historical telemetry.
+- **Carbon Tracking:** Tokenized carbon footprint calculation across the entire transit lifecycle.
+
+---
+
+## 14. Recommended Tech Stack
+**Frontend:**
+- Next.js 15
+- TailwindCSS
+- HTML5-QRCode
+- Wagmi / Viem
+
+**Backend:**
+- NestJS
+- Node.js
+- BullMQ
+- Ethers.js
+
+**Database & Cache:**
+- PostgreSQL (Supabase)
+- Prisma ORM
+- Upstash (Serverless Redis)
+
+**Blockchain:**
+- Solidity 0.8.20
+- Hardhat
+- OpenZeppelin
+
+---
+
+## 15. Deliverables
+### Development Deliverables
+- Web admin and stakeholder portals
+- Zero-cost Consumer QR Web-App
+- Multi-Registry Smart Contracts suite
+- High-frequency REST APIs
+- Relational Database schema
+- Automated Test suites (Hardhat & Jest)
+- Comprehensive Technical Documentation
+
+---
+
+## 16. MVP Scope (Phase 1)
+### Must-Have Features
+- Multi-Registry Smart Contract deployment (including **Carbon Tracking**)
+- NestJS Relayer and Queue configuration
+- Supplier Batch Creation and GS1 mapping
+- Retailer Escrow funding and auto-release
+- Consumer QR Verification Scanning
+- Core Supabase Integration
+
+---
+
+## 17. Expected End Result
+A complete enterprise-ready blockchain logistics and settlement infrastructure running on the MST Testnet, capable of supporting global physical supply chains, anti-counterfeiting infrastructure, and automated B2B escrow settlements, with scalability for millions of real-world assets.
