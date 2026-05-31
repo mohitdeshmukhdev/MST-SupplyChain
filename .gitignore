@@ -29,6 +29,7 @@ Thumbs.db
 
 # Exclude documentation and diagrams
 *.md
+!README.md
 *.jpg
 *.jpeg
 *.png
