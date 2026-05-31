@@ -14,87 +14,117 @@ Our hybrid architecture leverages smart contracts for absolute trust and an off-
 
 ## 🏗️ System Architecture
 
-The ecosystem relies on a robust hybrid architecture. The Frontend Portal connects with the Backend Engine via REST API. The Backend Engine processes business logic, queues tasks in Redis, syncs with Postgres, and acts as a Relayer to interact with the Smart Contracts.
+The ecosystem relies on a highly detailed hybrid architecture. The Next.js frontend handles Web3 RBAC, while the NestJS backend processes business logic, utilizes BullMQ for asynchronous blockchain transactions, mirrors data in Supabase, and bridges strictly to the 7 Layer-1 Smart Contracts.
 
 ```mermaid
-flowchart TD
-    classDef frontend fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
-    classDef backend fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000
-    classDef database fill:#fff3e0,stroke:#fb8c00,stroke-width:2px,color:#000
-    classDef blockchain fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+flowchart TB
+    classDef client fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a
+    classDef backend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+    classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
+    classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
 
-    subgraph User_Layer [1. User Layer]
-        Wagmi[Wallet Connect & RBAC]:::frontend
-        UI[Next.js React Dashboard]:::frontend
+    subgraph Frontend [1. Frontend Portal - Next.js App Router]
+        Wagmi["Web3 Provider & RBAC\nManages MetaMask wallet connections\nEnforces Manufacturer/Transporter roles"]:::client
+        UI["React Web Interface\nRenders Dashboards, ReactFlow pipelines\nHandles HTML5 QR Code scanning"]:::client
     end
 
-    subgraph Backend_Layer [2. Backend Engine]
-        API[NestJS REST API]:::backend
-        Services[Business Logic & Smart Contract Relayer]:::backend
-        Prisma[Prisma ORM]:::backend
-        BullMQ[BullMQ Task Queue]:::backend
+    subgraph Backend [2. Backend Engine - NestJS]
+        API["REST Controllers\nExposes secure endpoints\nValidates incoming JSON payloads"]:::backend
+        Services["Business Logic & Relayer\nExecutes core application logic\nSigns transactions via ethers.js relayer"]:::backend
+        Prisma["Prisma ORM (v7)\nManages PostgreSQL connection pool\nExecutes type-safe queries"]:::backend
+        BullMQ["BullMQ Task Queues\nHandles asynchronous blockchain Txs\nEnsures reliable delivery and retries"]:::backend
     end
 
-    subgraph Data_Layer [3. Off-Chain Infrastructure]
-        Supabase[(Supabase PostgreSQL)]:::database
-        Upstash[(Upstash Redis)]:::database
+    subgraph Infrastructure [3. Off-Chain Infrastructure]
+        Supabase[("Supabase PostgreSQL\nMirrors on-chain state for fast reads\nStores raw telemetry & batch data")]:::db
+        Upstash[("Upstash Redis\nStores BullMQ job states\nProvides high-speed caching layer")]:::db
     end
 
-    subgraph Blockchain_Layer [4. MST Testnet]
-        Registry[7 Smart Contract Registries]:::blockchain
+    subgraph Blockchain [4. MST Testnet Blockchain - Layer 1]
+        IdentitySC["IdentityRegistry.sol\nStores KYC CIDs & Entity Roles\nValidates user permissions"]:::blockchain
+        BatchSC["BatchRegistry.sol\nTracks product lifecycle stages\nLinks to Manufacturer & Custodian"]:::blockchain
+        CheckpointSC["Checkpoint.sol\nLogs custody handovers & GPS\nMaintains immutable transit history"]:::blockchain
+        EscrowSC["EscrowRegistry.sol\nLocks Retailer funds in contract\nAutomates milestone payouts"]:::blockchain
+        CarbonSC["CarbonRegistry.sol\nLogs DEFRA emission records\nTracks kgCO2 per transit leg"]:::blockchain
+        DocSC["DocumentRegistry.sol\nAnchors IPFS document hashes\nValidates Bill of Lading integrity"]:::blockchain
+        TelemetrySC["TelemetryRegistry.sol\nAnchors IoT sensor Keccak256 hashes\nProves temperature/humidity data"]:::blockchain
     end
 
-    Wagmi -->|Sign TX| UI
-    UI -->|HTTP Request| API
-    API -->|Route & Validate| Services
-    Services -->|Read/Write| Prisma
-    Prisma -->|SQL Query| Supabase
-    Services -->|Enqueue Task| BullMQ
-    BullMQ -->|Store State| Upstash
-    Services -->|Broadcast TX| Registry
+    Wagmi -->|1. Cryptographic Signatures| UI
+    UI -->|2. Secure HTTP Requests| API
+    API -->|3. Routes & Validates| Services
+    Services -->|4. Reads/Writes Data| Prisma
+    Prisma -->|5. Executes SQL| Supabase
+    Services -->|6. Enqueues Blockchain Tx| BullMQ
+    BullMQ -.->|7. Background Worker| Services
+    BullMQ -->|8. Manages Queue State| Upstash
+    Services -->|9. Broadcasts Signed Tx via RPC| Blockchain
 ```
 
 ---
 
 ## ⚙️ Workflows & Data Models
 
-### Supply Chain Lifecycle
+### Comprehensive All-Users Flow
 
-This sequence diagram illustrates the step-by-step lifecycle of a batch passing through the supply chain: Minting, Handover, IoT Telemetry, Carbon tracking, and Escrow Release.
+This sequence diagram illustrates the entire end-to-end user flow, incorporating all actors (Manufacturer, Transporter, Auditor, and Retailer) and mapping exactly how they interact with the portal, the backend relayer, the database, and the blockchain.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Manufacturer
     actor Transporter
-    participant Backend as Backend Engine
-    participant Contracts as Smart Contracts
+    actor Auditor
     actor Retailer
+    participant Portal as Next.js Portal
+    participant API as NestJS Backend
+    participant DB as Supabase DB
+    participant Chain as MST Testnet
 
-    rect rgb(240, 248, 255)
-    Note over Manufacturer, Retailer: Phase 1: Production & Funding
-    Manufacturer->>Backend: Create Batch (GTIN, Weight)
-    Backend->>Contracts: mintBatch()
-    Retailer->>Backend: Fund Escrow for Batch
-    Backend->>Contracts: fundEscrow()
-    end
+    Note over Manufacturer, Chain: Phase 1: Production & Order Creation
+    Manufacturer->>Portal: Login via MetaMask (RBAC: Manufacturer)
+    Manufacturer->>Portal: Enter GTIN, Name, Weight, Upload Docs
+    Portal->>API: POST /api/batch
+    API->>Chain: Relayer executes mintBatch() & anchorDocument()
+    Chain-->>API: Emits BatchMinted Event
+    API->>DB: Prisma stores Batch & Document metadata
+    DB-->>Portal: Returns Batch ID
+    
+    Retailer->>Portal: Login via MetaMask (RBAC: Retailer)
+    Retailer->>API: Requests Escrow Funding
+    Portal->>Chain: Direct MetaMask Tx: fundEscrow() [payable]
+    Chain-->>API: Emits EscrowFunded Event
+    API->>DB: Updates Escrow status to FUNDED
 
-    rect rgb(245, 255, 250)
-    Note over Manufacturer, Retailer: Phase 2: Transit & Telemetry
-    Transporter->>Backend: Scan QR & Take Custody
-    Backend->>Contracts: logCheckpoint()
-    Transporter->>Backend: Upload IoT Sensor Data
-    Backend->>Contracts: anchorTelemetry(hash)
-    Transporter->>Backend: Log Transit Distance
-    Backend->>Contracts: logEmissions(kgCO2)
-    end
+    Note over Manufacturer, Chain: Phase 2: Transit, Telemetry & Carbon Tracking
+    Transporter->>Portal: Login via MetaMask (RBAC: Transporter)
+    Transporter->>Portal: Scans QR Code for Batch Handover
+    Portal->>API: POST /api/checkpoint
+    API->>Chain: Relayer executes logCheckpoint()
+    API->>DB: Saves custody transfer & location
+    
+    Transporter->>Portal: IoT Devices Push Temp/Humidity Data
+    Portal->>API: POST /api/telemetry
+    API->>DB: Stores raw telemetry values
+    API->>Chain: Relayer executes anchorTelemetry(keccak256 hash)
+    
+    Transporter->>Portal: Submits Transit Leg (Distance, Vehicle)
+    Portal->>API: POST /api/carbon
+    API->>API: Calculates Emissions (DEFRA Protocols)
+    API->>Chain: Relayer executes logEmissions(kgCO2)
+    API->>DB: Stores Emission logs
 
-    rect rgb(255, 250, 240)
-    Note over Manufacturer, Retailer: Phase 3: Settlement
-    Retailer->>Backend: Confirm Delivery Receipt
-    Backend->>Contracts: releaseEscrow()
-    Contracts-->>Manufacturer: Transfer Funds
-    end
+    Note over Manufacturer, Chain: Phase 3: Audit, Delivery & Settlement
+    Auditor->>Portal: Login via MetaMask (RBAC: Auditor)
+    Auditor->>DB: Queries Batch History
+    DB-->>Auditor: Returns Off-chain Telemetry
+    Auditor->>Chain: Verifies hashes on Block Explorer (Zero-Trust)
+    
+    Retailer->>Portal: Confirms receipt of goods via Dashboard
+    Portal->>API: POST /api/escrow/release
+    API->>Chain: Relayer executes releaseEscrow()
+    Chain-->>Manufacturer: Transfers tMST funds automatically
+    API->>DB: Updates status to DELIVERED and RELEASED
 ```
 
 ### Database Schema (ERD)
