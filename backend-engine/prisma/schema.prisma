@@ -1,0 +1,239 @@
+// ============================================================
+// MST SaralChain — Prisma Schema
+// Maps all 7 deployed on-chain registries to Supabase Postgres
+// Off-chain mirror for fast querying + analytics
+// ============================================================
+
+generator client {
+  provider     = "prisma-client-js"
+  engineType   = "client"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────
+
+enum BatchStage {
+  MINTED
+  DISPATCHED
+  IN_TRANSIT
+  CUSTOMS_CLEARED
+  RETAIL_READY
+  DISPUTED
+}
+
+enum EscrowStatus {
+  UNFUNDED
+  FUNDED
+  RELEASED
+  DISPUTED
+  REFUNDED
+}
+
+enum TxStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum VehicleType {
+  DIESEL_TRUCK_HGV
+  REFRIGERATED_TRUCK
+  VAN_DIESEL
+  ELECTRIC_TRUCK
+  CARGO_SHIP
+  AIR_FREIGHT
+  RAIL
+}
+
+// ─── 1. IDENTITY (mirrors IdentityRegistry.sol) ──────────────
+
+model Identity {
+  id            String   @id @default(uuid())
+  walletAddress String   @unique
+  legalName     String
+  entityType    String   // "SUPPLIER" | "TRANSPORTER" | "RETAILER" | "AUDITOR"
+  kycDocCid     String   // IPFS CID of KYC document
+  isVerified    Boolean  @default(false)
+  verifiedBy    String?  // Admin wallet that approved
+  onChainTxHash String?  // Transaction that registered identity on-chain
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  batches       Batch[]  @relation("ManufacturerBatches")
+  custodyLegs   Batch[]  @relation("CustodianBatches")
+
+  @@index([walletAddress])
+  @@index([entityType])
+}
+
+// ─── 2. BATCH (mirrors BatchRegistry.sol) ────────────────────
+
+model Batch {
+  id               String     @id @default(uuid())
+  blockchainId     Int        @unique          // on-chain batchId (uint256)
+  gtin             String                      // GS1 GTIN product identifier
+  productName      String
+  originFacility   String
+  quantity         Int
+  unit             String                      // "kg" | "units" | "litres"
+  weightTonnes     Float      @default(0)      // used for carbon calculations
+  stage            BatchStage @default(MINTED)
+  manufacturerId   String
+  manufacturer     Identity   @relation("ManufacturerBatches", fields: [manufacturerId], references: [id])
+  currentCustodianId String?
+  currentCustodian Identity?  @relation("CustodianBatches", fields: [currentCustodianId], references: [id])
+  mintTxHash       String?
+  mintedAt         DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Relations
+  checkpoints      Checkpoint[]
+  telemetryAnchors TelemetryAnchor[]
+  documents        Document[]
+  escrow           Escrow?
+  carbonLogs       CarbonLog[]
+
+  @@index([blockchainId])
+  @@index([gtin])
+  @@index([stage])
+}
+
+// ─── 3. CHECKPOINT (custody handover events) ────────────────
+
+model Checkpoint {
+  id             String    @id @default(uuid())
+  batchId        String
+  batch          Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  fromAddress    String
+  toAddress      String
+  location       String
+  stage          BatchStage
+  gpsLat         Float?
+  gpsLng         Float?
+  txHash         String
+  txStatus       TxStatus  @default(PENDING)
+  blockNumber    BigInt?
+  occurredAt     DateTime  @default(now())
+
+  @@index([batchId])
+  @@index([txHash])
+}
+
+// ─── 4. TELEMETRY (mirrors TelemetryRegistry.sol) ───────────
+
+model TelemetryAnchor {
+  id              String   @id @default(uuid())
+  batchId         String
+  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  // Raw off-chain data (never goes on-chain — hash does)
+  temperatureC    Float?
+  humidityPct     Float?
+  gpsLat          Float?
+  gpsLng          Float?
+  // On-chain anchor
+  dataHash        String   // keccak256 of raw data row — must match on-chain
+  complianceBreach Boolean @default(false)
+  breachReason    String?
+  submitterAddress String
+  txHash          String
+  anchoredAt      DateTime @default(now())
+
+  @@index([batchId])
+  @@index([dataHash])
+  @@index([complianceBreach])
+}
+
+// ─── 5. DOCUMENT (mirrors DocumentRegistry.sol) ─────────────
+
+model Document {
+  id              String   @id @default(uuid())
+  batchId         String
+  batch           Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  docType         String   // "BILL_OF_LADING" | "CERTIFICATE_OF_ORIGIN" | "CUSTOMS_CLEARANCE" | "INSPECTION_REPORT"
+  ipfsCid         String   // Pinata/IPFS content identifier
+  contentHash     String   // keccak256 of document — matches on-chain anchor
+  authoritySigner String   // Wallet that signed the document upload
+  txHash          String
+  uploadedAt      DateTime @default(now())
+
+  @@index([batchId])
+  @@index([docType])
+  @@index([ipfsCid])
+}
+
+// ─── 6. ESCROW (mirrors EscrowRegistry.sol) ─────────────────
+
+model Escrow {
+  id              String       @id @default(uuid())
+  batchId         String       @unique
+  batch           Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  blockchainBatchId Int
+  buyerAddress    String
+  sellerAddress   String
+  amountWei       String       // BigInt as string to avoid precision loss
+  amountEth       Float        // Human-readable ETH equivalent
+  status          EscrowStatus @default(UNFUNDED)
+  milestoneCount  Int          @default(0)
+  fundTxHash      String?
+  releaseTxHash   String?
+  disputeTxHash   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([blockchainBatchId])
+  @@index([status])
+}
+
+// ─── 7. CARBON LOG (mirrors CarbonRegistry.sol) ─────────────
+
+model CarbonLog {
+  id               String      @id @default(uuid())
+  batchId          String
+  batch            Batch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  legIndex         Int         // 0 = first leg, 1 = second leg, etc.
+  // Input data (from GPS + BatchRegistry)
+  fromLocation     String
+  toLocation       String
+  distanceKm       Float
+  weightTonnes     Float
+  vehicleType      VehicleType
+  transporterAddress String
+  // Calculated values (DEFRA GHG Protocol)
+  emissionFactor   Float       // kg CO2 per tonne·km (from DEFRA table)
+  emissionsKg      Float       // = distanceKm × weightTonnes × emissionFactor
+  // On-chain reference
+  txHash           String
+  loggedAt         DateTime    @default(now())
+
+  @@index([batchId])
+  @@index([vehicleType])
+}
+
+// ─── 8. BLOCKCHAIN TX LOG (for audit trail) ─────────────────
+
+model BlockchainTx {
+  id            String   @id @default(uuid())
+  txHash        String   @unique
+  contractName  String   // "GovernanceRegistry" | "BatchRegistry" | etc.
+  functionName  String   // "mintBatch" | "logEmissions" | etc.
+  fromAddress   String
+  toAddress     String   // contract address
+  blockNumber   BigInt?
+  gasUsed       BigInt?
+  status        TxStatus @default(PENDING)
+  errorMessage  String?
+  payload       Json?    // Serialized function arguments for debugging
+  submittedAt   DateTime @default(now())
+  confirmedAt   DateTime?
+
+  @@index([txHash])
+  @@index([contractName])
+  @@index([fromAddress])
+  @@index([status])
+}

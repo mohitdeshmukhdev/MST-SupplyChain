@@ -26,3 +26,9 @@ dist/
 # Operating System files
 .DS_Store
 Thumbs.db
+
+# Exclude documentation and diagrams
+*.md
+*.jpg
+*.jpeg
+*.png
