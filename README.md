@@ -17,11 +17,12 @@ Our hybrid architecture leverages smart contracts for absolute trust and an off-
 The ecosystem relies on a highly detailed hybrid architecture. The Next.js frontend handles Web3 RBAC, while the NestJS backend processes business logic, utilizes BullMQ for asynchronous blockchain transactions, mirrors data in Supabase, and bridges strictly to the 7 Layer-1 Smart Contracts.
 
 ```mermaid
-flowchart TB
+flowchart TD
     classDef client fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a
     classDef backend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
     classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
     classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
+    classDef rpc fill:#dcfce7,stroke:#16a34a,stroke-width:3px,color:#14532d,stroke-dasharray: 5 5
 
     subgraph Frontend [1. Frontend Portal - Next.js App Router]
         Wagmi["Web3 Provider & RBAC\nManages MetaMask wallet connections\nEnforces Manufacturer/Transporter roles"]:::client
@@ -41,6 +42,7 @@ flowchart TB
     end
 
     subgraph Blockchain [4. MST Testnet Blockchain - Layer 1]
+        RPC(("MST Testnet RPC\nethers.js Provider")):::rpc
         IdentitySC["IdentityRegistry.sol\nStores KYC CIDs & Entity Roles\nValidates user permissions"]:::blockchain
         BatchSC["BatchRegistry.sol\nTracks product lifecycle stages\nLinks to Manufacturer & Custodian"]:::blockchain
         CheckpointSC["Checkpoint.sol\nLogs custody handovers & GPS\nMaintains immutable transit history"]:::blockchain
@@ -58,7 +60,15 @@ flowchart TB
     Services -->|6. Enqueues Blockchain Tx| BullMQ
     BullMQ -.->|7. Background Worker| Services
     BullMQ -->|8. Manages Queue State| Upstash
-    Services -->|9. Broadcasts Signed Tx via RPC| Blockchain
+    
+    Services -->|9. Broadcasts Signed Tx| RPC
+    RPC --- IdentitySC
+    RPC --- BatchSC
+    RPC --- CheckpointSC
+    RPC --- EscrowSC
+    RPC --- CarbonSC
+    RPC --- DocSC
+    RPC --- TelemetrySC
 ```
 
 ---
