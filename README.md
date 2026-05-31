@@ -24,13 +24,13 @@ flowchart LR
     classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
     classDef rpc fill:#dcfce7,stroke:#16a34a,stroke-width:3px,color:#14532d,stroke-dasharray: 5 5
 
-    subgraph UserLayer [1. Client & Presentation Layer]
+    subgraph UserLayer ["1. Client & Presentation Layer"]
         direction TB
         Wagmi["Web3 Provider & RBAC\n- Manages MetaMask wallet connections\n- Enforces strictly typed Manufacturer/Transporter roles\n- Handles EIP-712 cryptographic signatures"]:::client
         UI["React Web Interface (Next.js)\n- Renders SSR Dashboards & visual pipelines\n- Processes HTML5 QR Code scanning for custody\n- Responsive TailwindCSS & shadcn/ui components"]:::client
     end
 
-    subgraph BackendLayer [2. Core Backend Engine (NestJS)]
+    subgraph BackendLayer ["2. Core Backend Engine (NestJS)"]
         direction TB
         API["REST API Controllers\n- Exposes secure, rate-limited endpoints\n- Validates incoming JSON payloads\n- Parses authentication headers"]:::backend
         Services["Business Logic & Smart Contract Relayer\n- Executes core supply chain rules & constraints\n- Signs txs server-side via ethers.js Relayer wallet\n- Eliminates gas fees for end-users (Gasless UX)"]:::backend
@@ -38,13 +38,13 @@ flowchart LR
         BullMQ["BullMQ Task Queues (Async Workers)\n- Handles async blockchain tx broadcasting\n- Ensures reliable delivery with exponential backoff\n- Prevents RPC node rate-limiting and drops"]:::backend
     end
 
-    subgraph DataLayer [3. Off-Chain Infrastructure]
+    subgraph DataLayer ["3. Off-Chain Infrastructure"]
         direction TB
         Supabase[("Supabase PostgreSQL DB\n- Mirrors on-chain state for instant UI rendering\n- Stores raw, unstructured telemetry & batch data\n- Provides complex JOIN queries impossible on-chain")]:::db
         Upstash[("Upstash Redis Cache\n- Stores volatile BullMQ background job states\n- Caches frequently accessed supply chain lookups\n- High-speed, low-latency key-value store")]:::db
     end
 
-    subgraph BlockchainLayer [4. MST Testnet Blockchain - Layer 1]
+    subgraph BlockchainLayer ["4. MST Testnet Blockchain - Layer 1"]
         direction TB
         RPC(("MST Testnet RPC Node\nethers.js Provider Endpoint\n(Broadcasts Signed Txs)")):::rpc
         IdentitySC["IdentityRegistry.sol\n- Stores IPFS KYC CIDs & Entity Roles\n- Validates on-chain permissions"]:::blockchain
@@ -80,11 +80,94 @@ flowchart LR
 
 ---
 
+## 🧑‍🤝‍🧑 Unified User & System Flow
+
+This diagram maps exactly how our four key stakeholders interact with the specific components of our hybrid architecture. 
+
+```mermaid
+flowchart LR
+    classDef actor fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#000
+    classDef client fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a
+    classDef backend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+    classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
+    classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
+
+    subgraph Actors ["Stakeholders"]
+        direction TB
+        M(("🏭 Manufacturer")):::actor
+        R(("🏪 Retailer")):::actor
+        T(("🚚 Transporter")):::actor
+        A(("🕵️ Auditor")):::actor
+    end
+
+    subgraph Portal ["Frontend Portal"]
+        UI["Web Interface\n(Next.js & MetaMask)"]:::client
+    end
+
+    subgraph Backend ["Backend Engine"]
+        API["NestJS API & Relayer\n(Handles Business Logic)"]:::backend
+        DB[("Supabase PostgreSQL\n(Mirrors off-chain data)")]:::db
+    end
+
+    subgraph Chain ["MST Testnet"]
+        SC["Smart Contracts\n(Immutable Ledger)"]:::blockchain
+    end
+
+    %% User Actions
+    M -->|1. Creates Product Batch| UI
+    R -->|2. Locks Escrow Funds| UI
+    T -->|3. Scans QR Code| UI
+    T -->|4. Pushes IoT Sensors| UI
+    R -->|5. Confirms Delivery| UI
+    
+    %% System Flow
+    UI -->|JSON Payloads| API
+    API -->|Reads/Writes fast data| DB
+    API -->|Relayer broadcasts Tx| SC
+    
+    %% Auditor Flow
+    A -.->|6a. Instant Web2 Audits| DB
+    A -.->|6b. Zero-Trust Web3 Audits| SC
+```
+
+---
+
+## 🚶‍♂️ Simplified User Journey
+
+For non-technical stakeholders, this is the simple, high-level business flow of a product moving through the ecosystem from creation to settlement.
+
+```mermaid
+flowchart TD
+    classDef actor fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#000
+    classDef action fill:#ffffff,stroke:#64748b,stroke-width:2px,color:#0f172a
+    
+    Manufacturer(("🏭 Manufacturer")):::actor
+    Retailer(("🏪 Retailer")):::actor
+    Transporter(("🚚 Transporter")):::actor
+    Auditor(("🕵️ Auditor")):::actor
+
+    Manufacturer -->|1. Creates Product Batch| Step1[Batch Minted on Blockchain]:::action
+    Retailer -->|2. Locks Payment in Escrow| Step1
+    
+    Step1 -->|3. Goods Handed Over| Transporter
+    Transporter -->|4. Scans QR Code| Step2[Custody Checkpoint Logged]:::action
+    
+    Transporter -->|5. Transit Begins| Step3[IoT Sensors Anchor Temp/Humidity]:::action
+    Step3 -->|6. Journey Completes| Step4[DEFRA Carbon Emissions Calculated]:::action
+    
+    Step4 -->|7. Goods Arrive| Retailer
+    Retailer -->|8. Confirms Receipt| Step5[Smart Contract Releases Funds to Manufacturer]:::action
+    
+    Auditor -.->|Monitors Supply Chain Integrity| Step5
+```
+
+---
+
 ## ⚙️ Workflows & Data Models
 
-### Comprehensive All-Users Flow
+### Technical Sequence Diagram
 
-This sequence diagram illustrates the entire end-to-end user flow, incorporating all actors (Manufacturer, Transporter, Auditor, and Retailer) and mapping exactly how they interact with the portal, the backend relayer, the database, and the blockchain.
+This sequence diagram illustrates the exact lifecycle of a batch passing through the supply chain from a developer's perspective.
 
 ```mermaid
 sequenceDiagram
