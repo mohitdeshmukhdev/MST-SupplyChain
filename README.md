@@ -14,63 +14,44 @@ Our hybrid architecture leverages smart contracts for absolute trust and an off-
 
 ## 🏗️ System Architecture
 
-The ecosystem relies on a robust hybrid architecture. The Frontend Portal connects with the Backend Engine via REST API, while Web3 signatures ensure cryptographic security. The Backend Engine processes business logic, caches queue tasks in Redis, syncs with Postgres via Prisma, and acts as a Relayer to interact with the 7 Smart Contract Registries on the MST Blockchain.
+The ecosystem relies on a robust hybrid architecture. The Frontend Portal connects with the Backend Engine via REST API. The Backend Engine processes business logic, queues tasks in Redis, syncs with Postgres, and acts as a Relayer to interact with the Smart Contracts.
 
 ```mermaid
-flowchart TB
-    %% Styling
-    classDef client fill:#ffffff,stroke:#cbd5e1,stroke-width:2px,color:#1e293b,font-family:Inter;
-    classDef backend fill:#f8fafc,stroke:#3b82f6,stroke-width:2px,color:#1e293b,font-family:Inter;
-    classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#1e293b,font-family:Inter;
-    classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#1e293b,font-family:Inter;
-    classDef note fill:#fefce8,stroke:#eab308,stroke-width:1px,color:#854d0e,font-size:12px,font-style:italic;
+flowchart TD
+    classDef frontend fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    classDef backend fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000
+    classDef database fill:#fff3e0,stroke:#fb8c00,stroke-width:2px,color:#000
+    classDef blockchain fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
 
-    subgraph Frontend["Frontend Portal (Next.js App Router)"]
-        UI["<b>Web Interface</b><br/><i>Renders dashboards, ReactFlow pipelines, and QR Scanner</i>"]
-        Wagmi["<b>Web3 Provider</b><br/><i>Manages MetaMask wallet connections and RBAC</i>"]
+    subgraph User_Layer [1. User Layer]
+        Wagmi[Wallet Connect & RBAC]:::frontend
+        UI[Next.js React Dashboard]:::frontend
     end
-    
-    subgraph Backend["Backend Engine (NestJS)"]
-        API["<b>REST Controllers</b><br/><i>Handles HTTP requests from Frontend</i>"]
-        Services["<b>Business Logic & Relayer</b><br/><i>Validates data and signs blockchain txs</i>"]
-        Prisma["<b>Prisma ORM</b><br/><i>Manages DB connection pool</i>"]
-        BullMQ["<b>Task Queues</b><br/><i>Processes asynchronous blockchain transactions</i>"]
+
+    subgraph Backend_Layer [2. Backend Engine]
+        API[NestJS REST API]:::backend
+        Services[Business Logic & Smart Contract Relayer]:::backend
+        Prisma[Prisma ORM]:::backend
+        BullMQ[BullMQ Task Queue]:::backend
     end
-    
-    subgraph Infrastructure["Off-Chain Infrastructure"]
-        Supabase[("<b>Supabase DB</b><br/><i>PostgreSQL data mirror for instant querying</i>")]
-        Upstash[("<b>Upstash Redis</b><br/><i>Stores BullMQ task states</i>")]
+
+    subgraph Data_Layer [3. Off-Chain Infrastructure]
+        Supabase[(Supabase PostgreSQL)]:::database
+        Upstash[(Upstash Redis)]:::database
     end
-    
-    subgraph MSTTestnet["MST Testnet Blockchain (Layer 1)"]
-        IdentitySC["<b>IdentityRegistry</b><br/><i>Stores KYC and entity roles</i>"]
-        BatchSC["<b>BatchRegistry</b><br/><i>Tracks product lifecycle stages</i>"]
-        CheckpointSC["<b>Checkpoint</b><br/><i>Logs custody handovers</i>"]
-        EscrowSC["<b>EscrowRegistry</b><br/><i>Locks and releases payments</i>"]
-        CarbonSC["<b>CarbonRegistry</b><br/><i>Logs DEFRA emission records</i>"]
-        DocSC["<b>DocumentRegistry</b><br/><i>Anchors IPFS document hashes</i>"]
-        TelemetrySC["<b>TelemetryRegistry</b><br/><i>Anchors IoT sensor data hashes</i>"]
+
+    subgraph Blockchain_Layer [4. MST Testnet]
+        Registry[7 Smart Contract Registries]:::blockchain
     end
-    
-    %% Connections with descriptions
-    UI -- "1. API Requests (JSON)" --> API
-    Wagmi -- "2. Web3 Signatures" --> UI
-    
-    API -- "3. Validates & Routes" --> Services
-    Services -- "4. Enqueues Tx" --> BullMQ
-    BullMQ -. "5. Background Worker" .-> Services
-    
-    Services -- "6. Reads/Writes Off-chain Data" --> Prisma
-    Prisma -- "7. Executes SQL" --> Supabase
-    BullMQ -- "8. Queue State" --> Upstash
-    
-    Services -- "9. ethers.js (Relayer Wallet broadcast)" --> MSTTestnet
-    
-    %% Apply classes
-    class UI,Wagmi client;
-    class API,Services,Prisma,BullMQ backend;
-    class Supabase,Upstash db;
-    class MSTTestnet,IdentitySC,BatchSC,CheckpointSC,EscrowSC,CarbonSC,DocSC,TelemetrySC blockchain;
+
+    Wagmi -->|Sign TX| UI
+    UI -->|HTTP Request| API
+    API -->|Route & Validate| Services
+    Services -->|Read/Write| Prisma
+    Prisma -->|SQL Query| Supabase
+    Services -->|Enqueue Task| BullMQ
+    BullMQ -->|Store State| Upstash
+    Services -->|Broadcast TX| Registry
 ```
 
 ---
@@ -84,44 +65,36 @@ This sequence diagram illustrates the step-by-step lifecycle of a batch passing 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor M as Manufacturer
-    actor T as Transporter
-    participant B as Backend Engine
-    participant C as Smart Contracts
-    actor R as Retailer
+    actor Manufacturer
+    actor Transporter
+    participant Backend as Backend Engine
+    participant Contracts as Smart Contracts
+    actor Retailer
 
-    Note over M,R: Phase 1: Production & Escrow Funding
-    M->>B: Creates Batch via Dashboard
-    Note right of M: Inputs GTIN, Weight, Product Name
-    B->>C: mintBatch(gtin, manufacturerId)
-    C-->>B: Emits BatchMinted Event
-    
-    R->>B: Funds Escrow for Batch
-    Note right of R: Retailer locks payment in smart contract
-    B->>C: fundEscrow(batchId) [payable]
-    C-->>B: Emits EscrowFunded Event
-    
-    Note over M,R: Phase 2: Transit & Telemetry
-    T->>B: Scans QR & Takes Custody
-    Note right of T: Handover checkpoint created
-    B->>C: logCheckpoint(batchId, location)
-    C-->>B: Emits CheckpointLogged
-    
-    T->>B: IoT Sensors Submit Data
-    Note right of T: Temp/Humidity anchored via keccak256
-    B->>C: anchorTelemetry(dataHash)
-    C-->>B: Emits TelemetryAnchored
-    
-    T->>B: Calculates Carbon Emissions
-    Note right of T: Uses DEFRA factors based on vehicle & distance
-    B->>C: logEmissions(batchId, kgCO2)
-    C-->>B: Emits CarbonLogged
-    
-    Note over M,R: Phase 3: Delivery & Settlement
-    R->>B: Confirms Receipt of Goods
-    Note right of R: Triggers final release of funds to Manufacturer
-    B->>C: releaseEscrow(batchId)
-    C-->>R: Funds transferred from Contract to Manufacturer
+    rect rgb(240, 248, 255)
+    Note over Manufacturer, Retailer: Phase 1: Production & Funding
+    Manufacturer->>Backend: Create Batch (GTIN, Weight)
+    Backend->>Contracts: mintBatch()
+    Retailer->>Backend: Fund Escrow for Batch
+    Backend->>Contracts: fundEscrow()
+    end
+
+    rect rgb(245, 255, 250)
+    Note over Manufacturer, Retailer: Phase 2: Transit & Telemetry
+    Transporter->>Backend: Scan QR & Take Custody
+    Backend->>Contracts: logCheckpoint()
+    Transporter->>Backend: Upload IoT Sensor Data
+    Backend->>Contracts: anchorTelemetry(hash)
+    Transporter->>Backend: Log Transit Distance
+    Backend->>Contracts: logEmissions(kgCO2)
+    end
+
+    rect rgb(255, 250, 240)
+    Note over Manufacturer, Retailer: Phase 3: Settlement
+    Retailer->>Backend: Confirm Delivery Receipt
+    Backend->>Contracts: releaseEscrow()
+    Contracts-->>Manufacturer: Transfer Funds
+    end
 ```
 
 ### Database Schema (ERD)
@@ -131,59 +104,52 @@ The relational schema strictly maps our on-chain data architecture to highly que
 ```mermaid
 erDiagram
     Identity {
-        string id PK "UUID"
-        string walletAddress UK "MetaMask Address"
-        string entityType "MANUFACTURER, TRANSPORTER, RETAILER"
-        string kycDocCid "IPFS Hash"
+        string id PK
+        string walletAddress UK
+        string entityType
     }
     Batch {
-        string id PK "UUID"
-        int blockchainId UK "Smart Contract ID"
-        string gtin "GS1 Global Trade Item Number"
-        string stage "Current lifecycle stage"
-        string manufacturerId FK "Relation to Identity"
-        string currentCustodianId FK "Relation to Identity"
+        string id PK
+        int blockchainId UK
+        string gtin
+        string stage
     }
     Checkpoint {
-        string id PK "UUID"
-        string batchId FK "Relation to Batch"
-        string location "GPS or Address"
-        string txHash "Blockchain Reference"
+        string id PK
+        string batchId FK
+        string location
+        string txHash
     }
     TelemetryAnchor {
-        string id PK "UUID"
-        string batchId FK "Relation to Batch"
-        float temperatureC "Off-chain sensor data"
-        float humidityPct "Off-chain sensor data"
-        string dataHash "Keccak256 Anchor"
-        string txHash "Blockchain Reference"
+        string id PK
+        string batchId FK
+        float temperatureC
+        string dataHash
+        string txHash
     }
     CarbonLog {
-        string id PK "UUID"
-        string batchId FK "Relation to Batch"
-        float distanceKm "Calculated transit distance"
-        float emissionsKg "DEFRA Output"
-        string txHash "Blockchain Reference"
+        string id PK
+        string batchId FK
+        float emissionsKg
+        string txHash
     }
     Escrow {
-        string id PK "UUID"
-        string batchId FK "Relation to Batch"
-        float amountEth "Locked value"
-        string status "FUNDED, RELEASED"
+        string id PK
+        string batchId FK
+        float amountEth
+        string status
     }
     BlockchainTx {
-        string id PK "UUID"
-        string txHash UK "Transaction Identifier"
-        string contractName "Target Registry"
-        string status "PENDING, CONFIRMED"
+        string txHash PK
+        string contractName
+        string status
     }
 
-    Identity ||--o{ Batch : "manufactures"
-    Identity ||--o{ Batch : "custodies"
-    Batch ||--o{ Checkpoint : "has"
-    Batch ||--o{ TelemetryAnchor : "logs"
-    Batch ||--o{ CarbonLog : "emits"
-    Batch ||--|| Escrow : "secured by"
+    Identity ||--o{ Batch : "creates"
+    Batch ||--o{ Checkpoint : "tracks"
+    Batch ||--o{ TelemetryAnchor : "sensors"
+    Batch ||--o{ CarbonLog : "emissions"
+    Batch ||--|| Escrow : "payment"
 ```
 
 ---
