@@ -15,26 +15,29 @@ export default function Dashboard() {
   const [simulating, setSimulating] = useState(false);
   const { address } = useAccount();
 
-  const fetchBatch = async () => {
-    try {
-      // Fetch from our local NestJS backend
-      const res = await fetch(`http://localhost:5000/api/batch/${batchId}`);
-      if (!res.ok) throw new Error('Batch not found');
-      const data = await res.json();
-      setBatchData(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchBatch = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/batch/${batchId}`);
+        if (!res.ok) throw new Error('Batch not found');
+        const data = await res.json();
+        if (active) setBatchData(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     if (batchId) fetchBatch();
     
     // Poll every 5 seconds for live demo updates
     const interval = setInterval(fetchBatch, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [batchId]);
 
   const simulateTransit = async () => {
