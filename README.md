@@ -17,58 +17,65 @@ Our hybrid architecture leverages smart contracts for absolute trust and an off-
 The ecosystem relies on a highly detailed hybrid architecture. The Next.js frontend handles Web3 RBAC, while the NestJS backend processes business logic, utilizes BullMQ for asynchronous blockchain transactions, mirrors data in Supabase, and bridges strictly to the 7 Layer-1 Smart Contracts.
 
 ```mermaid
-flowchart TD
+flowchart LR
     classDef client fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a
     classDef backend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
     classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
     classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
     classDef rpc fill:#dcfce7,stroke:#16a34a,stroke-width:3px,color:#14532d,stroke-dasharray: 5 5
 
-    subgraph Frontend [1. Frontend Portal - Next.js App Router]
-        Wagmi["Web3 Provider & RBAC\nManages MetaMask wallet connections\nEnforces Manufacturer/Transporter roles"]:::client
-        UI["React Web Interface\nRenders Dashboards, ReactFlow pipelines\nHandles HTML5 QR Code scanning"]:::client
+    subgraph UserLayer [1. Client & Presentation Layer]
+        direction TB
+        Wagmi["Web3 Provider & RBAC\n- Manages MetaMask wallet connections\n- Enforces strictly typed Manufacturer/Transporter roles\n- Handles EIP-712 cryptographic signatures"]:::client
+        UI["React Web Interface (Next.js)\n- Renders SSR Dashboards & visual pipelines\n- Processes HTML5 QR Code scanning for custody\n- Responsive TailwindCSS & shadcn/ui components"]:::client
     end
 
-    subgraph Backend [2. Backend Engine - NestJS]
-        API["REST Controllers\nExposes secure endpoints\nValidates incoming JSON payloads"]:::backend
-        Services["Business Logic & Relayer\nExecutes core application logic\nSigns transactions via ethers.js relayer"]:::backend
-        Prisma["Prisma ORM (v7)\nManages PostgreSQL connection pool\nExecutes type-safe queries"]:::backend
-        BullMQ["BullMQ Task Queues\nHandles asynchronous blockchain Txs\nEnsures reliable delivery and retries"]:::backend
+    subgraph BackendLayer [2. Core Backend Engine (NestJS)]
+        direction TB
+        API["REST API Controllers\n- Exposes secure, rate-limited endpoints\n- Validates incoming JSON payloads\n- Parses authentication headers"]:::backend
+        Services["Business Logic & Smart Contract Relayer\n- Executes core supply chain rules & constraints\n- Signs txs server-side via ethers.js Relayer wallet\n- Eliminates gas fees for end-users (Gasless UX)"]:::backend
+        Prisma["Prisma ORM (Data Access Layer)\n- Manages highly concurrent PostgreSQL connections\n- Executes type-safe, optimized SQL queries\n- Translates blockchain state to relational DB"]:::backend
+        BullMQ["BullMQ Task Queues (Async Workers)\n- Handles async blockchain tx broadcasting\n- Ensures reliable delivery with exponential backoff\n- Prevents RPC node rate-limiting and drops"]:::backend
     end
 
-    subgraph Infrastructure [3. Off-Chain Infrastructure]
-        Supabase[("Supabase PostgreSQL\nMirrors on-chain state for fast reads\nStores raw telemetry & batch data")]:::db
-        Upstash[("Upstash Redis\nStores BullMQ job states\nProvides high-speed caching layer")]:::db
+    subgraph DataLayer [3. Off-Chain Infrastructure]
+        direction TB
+        Supabase[("Supabase PostgreSQL DB\n- Mirrors on-chain state for instant UI rendering\n- Stores raw, unstructured telemetry & batch data\n- Provides complex JOIN queries impossible on-chain")]:::db
+        Upstash[("Upstash Redis Cache\n- Stores volatile BullMQ background job states\n- Caches frequently accessed supply chain lookups\n- High-speed, low-latency key-value store")]:::db
     end
 
-    subgraph Blockchain [4. MST Testnet Blockchain - Layer 1]
-        RPC(("MST Testnet RPC\nethers.js Provider")):::rpc
-        IdentitySC["IdentityRegistry.sol\nStores KYC CIDs & Entity Roles\nValidates user permissions"]:::blockchain
-        BatchSC["BatchRegistry.sol\nTracks product lifecycle stages\nLinks to Manufacturer & Custodian"]:::blockchain
-        CheckpointSC["Checkpoint.sol\nLogs custody handovers & GPS\nMaintains immutable transit history"]:::blockchain
-        EscrowSC["EscrowRegistry.sol\nLocks Retailer funds in contract\nAutomates milestone payouts"]:::blockchain
-        CarbonSC["CarbonRegistry.sol\nLogs DEFRA emission records\nTracks kgCO2 per transit leg"]:::blockchain
-        DocSC["DocumentRegistry.sol\nAnchors IPFS document hashes\nValidates Bill of Lading integrity"]:::blockchain
-        TelemetrySC["TelemetryRegistry.sol\nAnchors IoT sensor Keccak256 hashes\nProves temperature/humidity data"]:::blockchain
+    subgraph BlockchainLayer [4. MST Testnet Blockchain - Layer 1]
+        direction TB
+        RPC(("MST Testnet RPC Node\nethers.js Provider Endpoint\n(Broadcasts Signed Txs)")):::rpc
+        IdentitySC["IdentityRegistry.sol\n- Stores IPFS KYC CIDs & Entity Roles\n- Validates on-chain permissions"]:::blockchain
+        BatchSC["BatchRegistry.sol\n- Tracks granular product lifecycle stages\n- Immutable links to Manufacturer & Custodian"]:::blockchain
+        CheckpointSC["Checkpoint.sol\n- Logs spatial custody handovers & GPS data\n- Maintains unforgeable transit history"]:::blockchain
+        EscrowSC["EscrowRegistry.sol\n- Locks Retailer funds in secure smart contract\n- Automates zero-trust milestone payouts"]:::blockchain
+        CarbonSC["CarbonRegistry.sol\n- Logs DEFRA-compliant emission records\n- Tracks kgCO2 footprint per transit leg"]:::blockchain
+        DocSC["DocumentRegistry.sol\n- Anchors IPFS document Keccak256 hashes\n- Mathematically validates Bill of Lading integrity"]:::blockchain
+        TelemetrySC["TelemetryRegistry.sol\n- Anchors IoT sensor Keccak256 hashes\n- Proves untampered temperature/humidity datasets"]:::blockchain
     end
 
-    Wagmi -->|1. Cryptographic Signatures| UI
-    UI -->|2. Secure HTTP Requests| API
-    API -->|3. Routes & Validates| Services
-    Services -->|4. Reads/Writes Data| Prisma
-    Prisma -->|5. Executes SQL| Supabase
-    Services -->|6. Enqueues Blockchain Tx| BullMQ
-    BullMQ -.->|7. Background Worker| Services
-    BullMQ -->|8. Manages Queue State| Upstash
+    %% Flow Connections
+    Wagmi -->|1. Signatures| UI
+    UI -->|2. HTTP Requests| API
+    API -->|3. Routes Data| Services
     
-    Services -->|9. Broadcasts Signed Tx| RPC
-    RPC --- IdentitySC
-    RPC --- BatchSC
-    RPC --- CheckpointSC
-    RPC --- EscrowSC
-    RPC --- CarbonSC
-    RPC --- DocSC
-    RPC --- TelemetrySC
+    Services -->|4. Reads/Writes| Prisma
+    Prisma -->|5. Executes SQL| Supabase
+    
+    Services -->|6. Enqueues Tx| BullMQ
+    BullMQ -.->|7. Worker Processing| Services
+    BullMQ -->|8. Manages State| Upstash
+    
+    Services -->|9. Broadcasts Tx| RPC
+    RPC -->|mintBatch| BatchSC
+    RPC -->|logCheckpoint| CheckpointSC
+    RPC -->|fundEscrow| EscrowSC
+    RPC -->|registerIdentity| IdentitySC
+    RPC -->|logEmissions| CarbonSC
+    RPC -->|anchorTelemetry| TelemetrySC
+    RPC -->|anchorDocument| DocSC
 ```
 
 ---
