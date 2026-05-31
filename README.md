@@ -2,6 +2,9 @@
 
 <div align="center">
   <h3>Enterprise-Grade Traceability on the MST Testnet</h3>
+
+  [![Node.js CI](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/ci.yml/badge.svg)](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/ci.yml)
+  [![CodeQL](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/codeql.yml/badge.svg)](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/codeql.yml)
 </div>
 
 ## 📖 Overview
