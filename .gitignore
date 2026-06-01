@@ -30,6 +30,11 @@ Thumbs.db
 # Exclude documentation and diagrams
 *.md
 !README.md
+!VERCEL_DEPLOYMENT_GUIDE.md
+!RENDER_DEPLOYMENT_GUIDE.md
+!DEMO_REQUIREMENTS.md
+!DEMO_TESTING_GUIDE.md
+!PRESENTATION_SCRIPT.md
 *.jpg
 *.jpeg
 *.png
