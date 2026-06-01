@@ -26,9 +26,58 @@ export class BlockchainService implements OnModuleInit {
       const blockNumber = await this.provider.getBlockNumber();
       this.logger.log(`Connected to MST Testnet. Current Block: ${blockNumber}`);
       this.logger.log(`Relayer Wallet Address: ${this.relayerWallet.address}`);
+      // Run authorization check in background so it doesn't block startup
+      this.ensureRelayerAuthorized();
     } catch (error) {
       this.logger.error('Failed to connect to MST Blockchain', error);
       throw error;
+    }
+  }
+
+  private async ensureRelayerAuthorized() {
+    try {
+      const govContract = this.getContract('GovernanceRegistry');
+      const identityContract = this.getContract('IdentityRegistry');
+      const relayerAddress = this.relayerWallet.address;
+
+      const roles = [
+        ethers.id("SUPPLIER_ROLE"),
+        ethers.id("LOGISTICS_ROLE"),
+        ethers.id("CUSTOMS_ROLE"),
+        ethers.id("RETAILER_ROLE"),
+        ethers.id("SYSTEM_ROLE")
+      ];
+
+      this.logger.log("Checking relayer contract permissions...");
+      
+      // 1. Grant roles if not already granted
+      for (const role of roles) {
+        const hasRole = await govContract.hasRole(role, relayerAddress);
+        if (!hasRole) {
+          this.logger.log(`Granting role ${role} to relayer...`);
+          const tx = await govContract.grantRole(role, relayerAddress);
+          await tx.wait(1);
+          this.logger.log(`Role ${role} granted successfully.`);
+        }
+      }
+
+      // 2. Verify in IdentityRegistry if not already verified
+      const isVerified = await identityContract.isVerified(relayerAddress);
+      if (!isVerified) {
+        this.logger.log("Verifying relayer identity in IdentityRegistry...");
+        const tx = await identityContract.verifyIdentity(
+          relayerAddress,
+          "MST Relayer Node",
+          "TAX-RELAYER",
+          "Global",
+          "SUPPLIER"
+        );
+        await tx.wait(1);
+        this.logger.log("Relayer identity verified successfully.");
+      }
+      this.logger.log("Relayer is fully authorized on-chain.");
+    } catch (error: any) {
+      this.logger.error(`Error ensuring relayer authorization: ${error.message}`);
     }
   }
 

@@ -1,23 +1,74 @@
-# MST Supply Chain: Next-Gen Supply Chain Ecosystem ⛓️📦
-
 <div align="center">
-  <h3>Enterprise-Grade Traceability on the MST Testnet</h3>
 
-  [![Node.js CI](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/ci.yml/badge.svg)](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/ci.yml)
-  [![CodeQL](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/codeql.yml/badge.svg)](https://github.com/mohitdeshmukhdev/MST-SupplyChain/actions/workflows/codeql.yml)
+# ⛓️ MST SaralChain: Enterprise Supply Chain Ecosystem
+
+<h3>Decentralized Identity, Real-Time IoT Telemetry & Carbon Tracking on the MST Blockchain</h3>
+
+<p>
+  <img src="https://img.shields.io/badge/Blockchain-MST_Network-7c3aed?style=for-the-badge&logo=web3.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Contracts-Solidity_0.8.24-6d28d9?style=for-the-badge&logo=solidity&logoColor=white" />
+  <img src="https://img.shields.io/badge/Frontend-Next.js_16-000000?style=for-the-badge&logo=next.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Backend-NestJS_10-e0234e?style=for-the-badge&logo=nestjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/Database-PostgreSQL_|_Supabase-336791?style=for-the-badge&logo=postgresql&logoColor=white" />
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/Status-Demo_Ready-22c55e?style=flat-square" />
+  <img src="https://img.shields.io/badge/Queue-BullMQ_%7C_Redis-ff1122?style=flat-square" />
+  <img src="https://img.shields.io/badge/Wallet-MetaMask_RBAC-f59e0b?style=flat-square" />
+</p>
+
 </div>
-
-## 📖 Overview
-
-**MST Supply Chain** is an enterprise-grade, Web3-powered supply chain management ecosystem built on the **MST Testnet Blockchain**. It provides an immutable, transparent, and highly performant platform for tracking goods, managing decentralized identities, anchoring IoT telemetry, tracking carbon emissions, and securely handling escrow payments.
-
-Our hybrid architecture leverages smart contracts for absolute trust and an off-chain NestJS, PostgreSQL, and Redis engine for rapid querying and seamless user experiences.
 
 ---
 
-## 🏗️ System Architecture
+> **"Bridging enterprise Web2 transaction speeds with the immutable, zero-trust guarantees of the Layer-1 MST Testnet Blockchain."**
 
-The ecosystem relies on a highly detailed hybrid architecture. The Next.js frontend handles Web3 RBAC, while the NestJS backend processes business logic, utilizes BullMQ for asynchronous blockchain transactions, mirrors data in Supabase, and bridges strictly to the 7 Layer-1 Smart Contracts.
+---
+
+## 📖 Overview
+
+**MST SaralChain** is a state-of-the-art, Web3-enabled supply chain traceability and financial settlement engine built specifically for the **MST Testnet Blockchain**. The platform guarantees complete, end-to-end transparency for global logistics by anchoring critical milestones, sensor records, compliance documents, and carbon footprints to an immutable ledger while ensuring lightning-fast user interactions through a hybrid off-chain synchronization layer.
+
+### Platform Architecture & Data Ingestion Pipeline
+
+The platform uses a hybrid stack of **Next.js (App Router)** for Web3-enabled user portals, **NestJS** as the core backend gateway, a **Redis + BullMQ queue** to guarantee error-free asynchronous transaction broadcasting, **Supabase PostgreSQL** for sub-15ms querying, and **7 specialized Smart Contracts** on the MST Testnet for decentralization:
+
+![MST SaralChain — Full Platform Architecture](./over%20all%20workflow.png)
+
+> **Core Workflow Topology:** 4 Client Portals → NestJS API Gateway → Redis/BullMQ Asynchronous Queue → Supabase Postgres + IPFS → L1 MST Testnet (7 Smart Contracts)
+
+---
+
+## 💡 Systemic Supply Chain Gaps & Cryptographic Solutions
+
+Traditional supply chains face massive bottlenecks, trust gaps, and infrastructure failures. Here is how MST SaralChain addresses them:
+
+### 1. The Trust Deficit & Document Forgery
+* **The Gap:** Paper bills of lading, compliance documents, and quality certificates are easily altered. Background verification requires days of auditing, manual document reviews, and costly third-party checks.
+* **The Solution:** **Hash-Anchoring Proofs**. Uploaded documents are saved on IPFS and their cryptographically secure `keccak256` content hashes are anchored to the blockchain via `DocumentRegistry.sol`. Any alteration of the document breaks the mathematical verification.
+
+### 2. Transaction Collision & Ingestion Latency (The Nonce Crisis)
+* **The Gap:** In a high-speed logistics chain, thousands of IoT devices and scanners push telemetry logs simultaneously. Submitting these directly to EVM blockchain nodes from a single backend wallet triggers **EVM Nonce Conflicts**, resulting in dropped transactions and synchronization failures.
+* **The Solution:** **Redis & BullMQ FIFO Transaction Queue**. Incoming telemetry data returns a `202 Accepted` to the client instantly. A robust background worker processes the queue sequentially, ensuring the relayer's transaction nonces are strictly incremented and broadcasted one-by-one with zero collisions.
+
+### 3. ESG Greenwashing
+* **The Gap:** Carbon emission reports are self-reported by logistics providers at the end of the year, leading to fabricated ESG metrics.
+* **The Solution:** **DEFRA-Compliant Transit Emissions Logging**. Every leg of transport is calculated dynamically in the NestJS backend based on vehicle engine type, load, and actual GPS distance, then immediately logged to `CarbonRegistry.sol` on-chain.
+
+### 4. Zero-Trust Condition Checks
+* **The Gap:** A supplier claims goods arrived in perfect temperature range; the retailer claims they were spoiled. There is no unforgeable link between the IoT sensor telemetry and the escrow payout.
+* **The Solution:** **On-Chain Hash Reconciliation**. Sensor logs are stored off-chain for rapid display, but their cryptographic state hash is anchored to `TelemetryRegistry.sol`. The frontend client pulls raw DB records, hashes them locally, and compares it to the blockchain registry. If a db admin tries to alter telemetry to cover up a spoilage event, the hash mismatch is flagged instantly.
+
+---
+
+## 🏗️ System Architecture & Data Separation
+
+To optimize performance and security, MST SaralChain enforces a strict **three-layer separation of concerns**:
+
+1. **The Consensus & Trust Layer (MST L1 Blockchain):** Stores zero plain-text data. It anchors sequential IDs, hashes (`keccak256`), wallet addresses, and locks escrow funds.
+2. **The Relational Storage Layer (Supabase PostgreSQL):** Houses relational metadata, full telemetry streams, transit profiles, coordinates, and identities.
+3. **The In-Memory Caching & Queue Layer (Redis):** Backs the BullMQ worker queue to handle asynchronous blockchain transaction processing and cache timelines.
 
 ```mermaid
 flowchart LR
@@ -83,61 +134,9 @@ flowchart LR
 
 ---
 
-## 🧑‍🤝‍🧑 Unified User & System Flow
+## 🚶‍♂️ Unified Stakeholder Journey
 
-This diagram maps exactly how our four key stakeholders interact with the specific components of our hybrid architecture. 
-
-```mermaid
-flowchart LR
-    classDef actor fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#000
-    classDef client fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px,color:#0f172a
-    classDef backend fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
-    classDef db fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
-    classDef blockchain fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
-
-    subgraph Actors ["Stakeholders"]
-        direction TB
-        M(("🏭 Manufacturer")):::actor
-        R(("🏪 Retailer")):::actor
-        T(("🚚 Transporter")):::actor
-        A(("🕵️ Auditor")):::actor
-    end
-
-    subgraph Portal ["Frontend Portal"]
-        UI["Web Interface\n(Next.js & MetaMask)"]:::client
-    end
-
-    subgraph Backend ["Backend Engine"]
-        API["NestJS API & Relayer\n(Handles Business Logic)"]:::backend
-        DB[("Supabase PostgreSQL\n(Mirrors off-chain data)")]:::db
-    end
-
-    subgraph Chain ["MST Testnet"]
-        SC["Smart Contracts\n(Immutable Ledger)"]:::blockchain
-    end
-
-    %% User Actions
-    M -->|1. Creates Product Batch| UI
-    R -->|2. Locks Escrow Funds| UI
-    T -->|3. Scans QR Code| UI
-    T -->|4. Pushes IoT Sensors| UI
-    R -->|5. Confirms Delivery| UI
-    
-    %% System Flow
-    UI -->|JSON Payloads| API
-    API -->|Reads/Writes fast data| DB
-    API -->|Relayer broadcasts Tx| SC
-    
-    %% Auditor Flow
-    A -.->|6a. Instant Web2 Audits| DB
-    A -.->|6b. Zero-Trust Web3 Audits| SC
-```
-
----
-
-## 🚶‍♂️ Simplified User Journey
-
-For non-technical stakeholders, this is the simple, high-level business flow of a product moving through the ecosystem from creation to settlement.
+This process shows the logical flow of goods, telemetry inputs, escrow transactions, and auditor checks as a batch traverses the supply chain:
 
 ```mermaid
 flowchart TD
@@ -166,11 +165,26 @@ flowchart TD
 
 ---
 
-## ⚙️ Workflows & Data Models
+## 🛠️ The Operational Portals (Implemented Routes)
+
+The platform is divided into specialized Web3-gated modules, which change in real-time depending on the MetaMask wallet address connected to the application:
+
+* **Landing Page (`/`):** The client-facing entry point highlighting MST blockchain benefits, the system topology, and launching the portal gateway.
+* **Identity & KYC Registration (`/identity`):** Where entities submit corporate metadata and their IPFS-based KYC documents to register on the blockchain registry.
+* **Batch Minting (`/manufacturer/mint`):** Accessible only to wallets holding the `SUPPLIER` role. Initiates a new batch by providing GTINs, weights, facility details, and generating a unique QR code.
+* **Batch Dashboard (`/dashboard/[batchId]`):** Interactive ReactFlow tracing interface displaying the step-by-step custody timeline, carbon totals, telemetry metrics (temp/humidity charts), and links to EVM transaction hashes.
+* **Transporter Hub (`/transporter`):** Accessible only to wallets holding the `TRANSPORTER` role. Features tabbed workspaces for:
+  - **Custody Handover (Checkpoint):** Signing and logging spatial handovers on-chain.
+  - **IoT Telemetry Logging:** Simulating telemetry broadcasts (temperature and humidity pings) to anchor hashes.
+  - **Carbon Footprint Log:** Specifying vehicle type, load, and mileage to record emissions on-chain.
+* **Retailer Portal (`/retailer`):** Accessible only to wallets holding the `RETAILER` role. Allows querying specific batches to fund escrows, check transit status, verify integrity hashes, and release funds upon safe arrival.
+* **QR Scanner (`/scanner`):** Mobile-responsive camera portal using `html5-qrcode` to scan a physical package's QR code and instantly load its provenance timeline.
+
+---
+
+## ⚙️ Core Technical Specifications
 
 ### Technical Sequence Diagram
-
-This sequence diagram illustrates the exact lifecycle of a batch passing through the supply chain from a developer's perspective.
 
 ```mermaid
 sequenceDiagram
@@ -230,9 +244,7 @@ sequenceDiagram
     API->>DB: Updates status to DELIVERED and RELEASED
 ```
 
-### Database Schema (ERD)
-
-The relational schema strictly maps our on-chain data architecture to highly queryable off-chain Postgres tables, linked universally by the `txHash`.
+### Relational Database Schema (ERD)
 
 ```mermaid
 erDiagram
@@ -240,23 +252,30 @@ erDiagram
         string id PK
         string walletAddress UK
         string entityType
+        boolean isVerified
     }
     Batch {
         string id PK
         int blockchainId UK
         string gtin
         string stage
+        string name
+        string origin
+        float quantity
+        float weight
     }
     Checkpoint {
         string id PK
         string batchId FK
         string location
+        string custodian
         string txHash
     }
     TelemetryAnchor {
         string id PK
         string batchId FK
         float temperatureC
+        float humidity
         string dataHash
         string txHash
     }
@@ -285,67 +304,106 @@ erDiagram
     Batch ||--|| Escrow : "payment"
 ```
 
+### Deployed smart contracts (MST Testnet)
+
+All smart contracts are written in Solidity 0.8.24 and deployed on the MST Testnet. Addresses are configured dynamically inside the relayer service.
+
+* **`GovernanceRegistry`:** Enforces system roles (`DEFAULT_ADMIN_ROLE`, `SYSTEM_ADMIN`, etc.).
+* **`IdentityRegistry`:** Houses on-chain KYC approvals and company-to-role mappings.
+* **`BatchRegistry`:** Governs batch state transitions, GTIN assignments, and manufacturer provenance.
+* **`Checkpoint`:** Manages spatial coordinate logs and transit custody handovers.
+* **`EscrowRegistry`:** Automates secure locked-value deposits and condition-based milestone releases.
+* **`CarbonRegistry`:** Records DEFRA-calculated carbon weights.
+* **`DocumentRegistry` & `TelemetryRegistry`:** Anchor cryptographic hashes (`keccak256`) of compliance PDFs and raw telemetry arrays.
+
 ---
 
-## 🚀 Getting Started
+## 🎬 Live Demo Planning & Execution
 
-### Prerequisites
-Before you begin, ensure you have the following installed and set up:
-* **Node.js** (v18.17.0 or higher)
-* **Git**
-* **MetaMask Extension** installed in your browser.
-* **MST Testnet Configuration:**
-  * **Network Name:** MST Testnet
-  * **RPC URL:** `https://testnetrpc.mstblockchain.com`
-  * **Chain ID:** `(Add Chain ID here)`
-  * **Currency Symbol:** `tMST`
+For evaluators, recruiters, or grant reviewers, the project is configured with a **fully automated live demo environment** that eliminates administrative delays.
 
-### 1. Clone the Repository
+### Required MetaMask Accounts (Personas)
+Import or create **4 separate accounts** in MetaMask, all configured to the **MST Testnet**:
+
+| Account Name | Supply Chain Persona | Primary Dashboard View |
+|---|---|---|
+| `RELAYER` | System Relayer (Gasless Execution) | Backend Engine (Automated) |
+| `SUPPLIER` | Manufacturer | `/manufacturer/mint` |
+| `TRANSPORTER` | Transporter / Logistics | `/transporter` |
+| `RETAILER` | Retailer / Purchaser | `/retailer` |
+| `CONSUMER` | Public Auditor | `/scanner` (No login needed) |
+
+> 🌐 **Frictionless Demo Bypass:** The backend relayer auto-authenticates itself and auto-verifies user KYC requests. When you submit a KYC request on `/identity`, the portal triggers a simulated 5-second admin approval loading sequence, after which the identity status transitions to "VERIFIED" without requiring a manual admin login.
+
+To study the complete step-by-step user script, setup guidelines, and transition mechanisms back to production, read [DEMO_REQUIREMENTS.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/DEMO_REQUIREMENTS.md).
+
+---
+
+## 🚀 Quick Start (Local Setup)
+
+Follow these steps to launch the ecosystem locally:
+
+### 1. Configure the MetaMask Network
+Connect MetaMask to the **MST Testnet**:
+* **RPC URL:** `https://testnetrpc.mstblockchain.com`
+* **Chain ID:** `(Available in MSTtestnet.md)`
+* **Currency Symbol:** `tMST`
+* **Block Explorer:** `https://testnetscan.mstblockchain.com`
+
+*Request faucet gas tokens from `https://faucet.mstblockchain.com` before testing.*
+
+### 2. Clone the Repository
 ```bash
 git clone https://github.com/mohitdeshmukhdev/MST-SupplyChain.git
 cd MST-SupplyChain
 ```
 
-### 2. Backend Setup
-Navigate to the backend directory, install dependencies, and start the engine:
+### 3. Start the Backend Engine (NestJS)
+Navigate to the backend, populate your `.env` variables, and run development mode:
 ```bash
 cd backend-engine
 npm install
 
-# Ensure your .env file is configured with Supabase DATABASE_URL, Upstash REDIS_URL, MST_RPC_URL, and RELAYER_PRIVATE_KEY.
-# Generate Prisma Client
+# Ensure database URL is populated for Supabase PostgreSQL
 npx prisma generate
 
-# Start the NestJS server (runs on http://localhost:5000)
+# Starts on http://localhost:5000
 npm run start:dev
 ```
 
-### 3. Frontend Setup
-Open a new terminal window, navigate to the frontend portal, and start the development server:
+### 4. Start the Frontend Portal (Next.js)
+In a new terminal window, initialize and boot up the UI server:
 ```bash
 cd frontend-portal
 npm install
 
-# Start the Next.js app (runs on http://localhost:3000)
+# Starts on http://localhost:3000
 npm run dev
 ```
 
-### 4. Prisma Studio (Optional Database GUI)
-To visualize and manage the Supabase database locally:
+### 5. Launch Prisma Studio (Optional Database View)
+To view raw database records synced from smart contract events in real-time:
 ```bash
 cd backend-engine
 npx prisma studio
-# Opens at http://localhost:5555
+# Starts on http://localhost:5555
 ```
 
 ---
 
-## 🛠️ Tech Stack
-* **Blockchain:** MST Testnet, Solidity, ethers.js v6
-* **Backend:** NestJS, Prisma (PostgreSQL on Supabase), BullMQ (Redis on Upstash)
-* **Frontend:** Next.js (App Router), ReactFlow, TailwindCSS v4, shadcn/ui, Wagmi v2, RainbowKit
-* **Tooling:** Hardhat, html5-qrcode
+## 📚 Project Documentation Directory
+
+| Resource | Scope | Path |
+|---|---|---|
+| **Demo Setup & Script** | End-to-end user flows, wallets, and demo planning. | [DEMO_REQUIREMENTS.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/DEMO_REQUIREMENTS.md) |
+| **Testing Guide** | Commands and validation scenarios for end-to-end testing. | [DEMO_TESTING_GUIDE.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/DEMO_TESTING_GUIDE.md) |
+| **System Architecture Spec** | Detailed data separation logic, queues, and security. | [System_Design_Architecture.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/System_Design_Architecture.md) |
+| **QR Code Testing** | Camera scanning guides and test cases. | [QR_CODE_TESTING_GUIDE.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/QR_CODE_TESTING_GUIDE.md) |
+| **API Architecture & Health** | Route maps, payload examples, and endpoint health tests. | [API_Testing_and_Architecture_Guide.md](file:///d:/MST%20Blockchain%20Grant%20Program/MST%20SaralChain/API_Testing_and_Architecture_Guide.md) |
 
 ---
-## 📄 License
-This project is licensed under the MIT License.
+
+<div align="center">
+  <p>Engineered with ❤️ for the <strong>MST Blockchain Grant Program</strong></p>
+  <p><em>Constructing a fast, secure, and verifiable global supply chain infrastructure.</em></p>
+</div>

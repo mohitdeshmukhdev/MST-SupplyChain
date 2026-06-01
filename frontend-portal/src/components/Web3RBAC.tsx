@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -17,7 +17,7 @@ export function Web3RBAC({ children, fallbackMessage, requireWallet }: Web3RBACP
       <div className="flex flex-col items-center justify-center p-8 text-center rounded-xl border border-slate-200 bg-white shadow-sm">
         <h3 className="mb-2 text-lg font-semibold text-slate-900">Wallet Connection Required</h3>
         <p className="mb-6 text-sm text-slate-500 max-w-md">
-          {fallbackMessage || "You must connect your Web3 wallet (e.g. MetaMask) to interact with the SaralChain network and verify your identity."}
+          {fallbackMessage || "You must connect your Web3 wallet (e.g. MetaMask) to interact with the Supply Chain network and verify your identity."}
         </p>
         <ConnectButton />
       </div>

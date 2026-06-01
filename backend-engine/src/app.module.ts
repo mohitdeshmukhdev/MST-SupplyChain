@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { validate } from './config/env.validation';
 
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { IdentityModule } from './identity/identity.module';
@@ -12,6 +14,7 @@ import { DocumentModule } from './document/document.module';
 import { EscrowModule } from './escrow/escrow.module';
 import { CarbonModule } from './carbon/carbon.module';
 import { HealthModule } from './health/health.module';
+import { CheckpointModule } from './checkpoint/checkpoint.module';
 
 @Module({
   imports: [
@@ -48,6 +51,10 @@ import { HealthModule } from './health/health.module';
     EscrowModule,
     CarbonModule,
     HealthModule,
+    CheckpointModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
+

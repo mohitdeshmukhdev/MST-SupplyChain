@@ -12,32 +12,42 @@ export class IdentityService {
   ) {}
 
   async registerIdentity(walletAddress: string, legalName: string, entityType: string, kycDocCid: string) {
-    // 1. Create off-chain record
-    const identity = await this.prisma.identity.create({
-      data: {
+    // 1. Create or update off-chain record
+    const identity = await this.prisma.identity.upsert({
+      where: { walletAddress },
+      update: {
+        legalName,
+        entityType,
+        kycDocCid,
+        isVerified: true,
+        verifiedBy: this.blockchain.relayerWallet.address
+      },
+      create: {
         walletAddress,
         legalName,
         entityType,
         kycDocCid,
-        isVerified: false
+        isVerified: true,
+        verifiedBy: this.blockchain.relayerWallet.address
       }
     });
 
-    // 2. Call IdentityRegistry on-chain
+    // 2. Call IdentityRegistry on-chain (verifyIdentity is the correct method name)
     const contract = this.blockchain.getContract('IdentityRegistry');
     
-    // IdentityRegistry.sol ABI -> registerIdentity(address _wallet, string _legalName, string _entityType, string _kycDocCid)
     try {
-      const tx = await contract.registerIdentity(walletAddress, legalName, entityType, kycDocCid);
+      const taxId = "TAX-" + walletAddress.substring(2, 8).toUpperCase();
+      const jurisdiction = "Global";
+      const tx = await contract.verifyIdentity(walletAddress, legalName, taxId, jurisdiction, entityType);
       
       // 3. Log transaction
       await this.txLogger.logTransaction(
         tx.hash,
         'IdentityRegistry',
-        'registerIdentity',
+        'verifyIdentity',
         this.blockchain.relayerWallet.address,
         await contract.getAddress(),
-        { walletAddress, legalName, entityType, kycDocCid }
+        { walletAddress, legalName, taxId, jurisdiction, primaryRole: entityType }
       );
 
       // Update off-chain tx hash
@@ -53,10 +63,26 @@ export class IdentityService {
   }
 
   async verifyIdentity(walletAddress: string) {
-    // 1. Call on-chain
+    // 1. Fetch off-chain details to get registration arguments
+    const identityDb = await this.prisma.identity.findUnique({
+      where: { walletAddress }
+    });
+    if (!identityDb) {
+      throw new Error(`Identity not found for wallet: ${walletAddress}`);
+    }
+
+    // 2. Call on-chain
     const contract = this.blockchain.getContract('IdentityRegistry');
     try {
-      const tx = await contract.verifyIdentity(walletAddress);
+      const taxId = "TAX-" + walletAddress.substring(2, 8).toUpperCase();
+      const jurisdiction = "Global";
+      const tx = await contract.verifyIdentity(
+        walletAddress,
+        identityDb.legalName,
+        taxId,
+        jurisdiction,
+        identityDb.entityType
+      );
       
       await this.txLogger.logTransaction(
         tx.hash,
@@ -64,15 +90,16 @@ export class IdentityService {
         'verifyIdentity',
         this.blockchain.relayerWallet.address,
         await contract.getAddress(),
-        { walletAddress }
+        { walletAddress, legalName: identityDb.legalName, taxId, jurisdiction, primaryRole: identityDb.entityType }
       );
 
-      // 2. Update off-chain
+      // 3. Update off-chain
       const identity = await this.prisma.identity.update({
         where: { walletAddress },
         data: { 
           isVerified: true,
-          verifiedBy: this.blockchain.relayerWallet.address
+          verifiedBy: this.blockchain.relayerWallet.address,
+          onChainTxHash: tx.hash
         }
       });
 

@@ -1,0 +1,57 @@
+# Complete Frontend dApp Implementation Plan
+
+The objective is to build the entire production-grade Next.js frontend for the MST Supply Chain dApp. The frontend will integrate seamlessly with the existing NestJS backend and smart contracts using real-time, non-mock data. We will enforce strict atomic code generation, zero mock drift, and immediate verification hooks (linting/compiling after every step).
+
+## User Review Required
+> [!IMPORTANT]
+> During my audit of the existing backend, I discovered that the `POST /api/checkpoint` endpoint (mentioned in the presentation script for Phase 4) **does not exist** in the backend code. 
+> To achieve "Zero Mock Drift", I must first implement this missing backend module (`checkpoint.controller.ts` & `checkpoint.service.ts`) before building the frontend transporter UI.
+
+## Proposed Changes
+
+### Phase 1: Backend Completion (Addressing Missing Endpoints)
+- **[NEW]** `backend-engine/src/checkpoint/checkpoint.module.ts`
+- **[NEW]** `backend-engine/src/checkpoint/checkpoint.controller.ts`
+- **[NEW]** `backend-engine/src/checkpoint/checkpoint.service.ts`
+- **[MODIFY]** `backend-engine/src/app.module.ts` (Register `CheckpointModule`)
+
+### Phase 2: Frontend Foundation & Shared Components
+- **[NEW]** `frontend-portal/src/components/ui/card.tsx`
+- **[NEW]** `frontend-portal/src/components/ui/button.tsx`
+- **[NEW]** `frontend-portal/src/components/ui/input.tsx`
+- **[NEW]** `frontend-portal/src/components/ui/badge.tsx`
+- **[NEW]** `frontend-portal/src/components/Sidebar.tsx` (Role-based navigation)
+- **[MODIFY]** `frontend-portal/src/app/layout.tsx` (Incorporate layout wrapper)
+
+### Phase 3: Identity & Minting (Manufacturer)
+- **[NEW]** `frontend-portal/src/app/identity/page.tsx` (KYC & Identity Registration Form)
+- **[NEW]** `frontend-portal/src/app/manufacturer/mint/page.tsx` (Batch Minting Form with dynamic API integration)
+
+### Phase 4: Transporter Action Hub
+- **[NEW]** `frontend-portal/src/app/transporter/page.tsx` (Hub for logging data)
+- **[NEW]** `frontend-portal/src/components/transporter/CheckpointForm.tsx` (Submit to `/api/checkpoint`)
+- **[NEW]** `frontend-portal/src/components/transporter/TelemetryForm.tsx` (Submit to `/api/telemetry/anchor`)
+- **[NEW]** `frontend-portal/src/components/transporter/CarbonForm.tsx` (Submit to `/api/carbon/simulate`)
+
+### Phase 5: Retailer & Escrow
+- **[NEW]** `frontend-portal/src/app/retailer/page.tsx` (Dashboard to view incoming batches)
+- **[NEW]** `frontend-portal/src/components/retailer/FundEscrowButton.tsx` (Direct Wagmi contract write to `EscrowRegistry.sol`)
+- **[NEW]** `frontend-portal/src/components/retailer/ReleaseEscrowButton.tsx` (Submit to `/api/escrow/:batchId/release`)
+
+### Phase 6: Batch Journey Dashboard Enhancements
+- **[MODIFY]** `frontend-portal/src/app/dashboard/[batchId]/page.tsx`
+  - Implement a chronological timeline UI showing Checkpoints, Telemetry breaches, and Carbon logs.
+  - Render the 6 distinct QR Codes required for the demo directly on the batch page.
+  - Display live Escrow funding status.
+
+## Verification Plan
+
+### Automated Verification (Rule 2)
+1. **Compilation:** After every 1-2 files generated, I will run `npm run build` in the respective directory (`backend-engine` or `frontend-portal`).
+2. **Linting:** I will run `npx eslint "src/**/*.{ts,tsx}" --max-warnings 0` for the frontend to ensure zero syntax or hook dependency errors.
+
+### Manual Verification
+1. Open the UI in browser via `npm run dev`.
+2. Connect MetaMask and register a test identity.
+3. Mint a batch and verify it appears in the Prisma database.
+4. Escrow funding via Wagmi.

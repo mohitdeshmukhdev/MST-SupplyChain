@@ -6,7 +6,13 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getRoot() {
+    return {
+      name: 'MST Supply Chain API',
+      version: '1.0.0',
+      status: 'running',
+      docs: '/api/docs',
+      health: '/health',
+    };
   }
 }

@@ -82,8 +82,23 @@ export class BatchService {
   }
 
   async getBatch(id: string) {
+    let whereClause: any = { id };
+    
+    if (id.startsWith('BATCH-')) {
+      const parsedId = parseInt(id.replace('BATCH-', ''), 10);
+      if (!isNaN(parsedId)) whereClause = { blockchainId: parsedId };
+    } else if (!isNaN(Number(id))) {
+      whereClause = { blockchainId: Number(id) };
+    }
+
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (whereClause.id && !uuidRegex.test(whereClause.id)) {
+      // Not a valid UUID and not a numeric/BATCH- id
+      return null;
+    }
+
     return this.prisma.batch.findUnique({
-      where: { id },
+      where: whereClause,
       include: {
         checkpoints: true,
         telemetryAnchors: true,
@@ -98,5 +113,46 @@ export class BatchService {
     return this.prisma.batch.findMany({
       orderBy: { createdAt: 'desc' }
     });
+  }
+  async updateStage(id: string, newStage: BatchStage) {
+    const batch = await this.prisma.batch.findUnique({ where: { id } });
+    if (!batch) throw new Error("Batch not found");
+
+    const contract = this.blockchain.getContract('BatchRegistry');
+    
+    // Map Prisma enum to contract enum integer index
+    const stageMap: Record<BatchStage, number> = {
+      MINTED: 0,
+      DISPATCHED: 1,
+      IN_TRANSIT: 2,
+      CUSTOMS_CLEARED: 3,
+      RETAIL_READY: 4,
+      DISPUTED: 5
+    };
+
+    const stageInt = stageMap[newStage];
+
+    try {
+      const tx = await contract.updateStage(batch.blockchainId, stageInt);
+      await this.blockchain.provider.waitForTransaction(tx.hash, 1);
+
+      const updatedBatch = await this.prisma.batch.update({
+        where: { id },
+        data: { stage: newStage }
+      });
+
+      await this.txLogger.logTransaction(
+        tx.hash,
+        'BatchRegistry',
+        'updateStage',
+        this.blockchain.relayerWallet.address,
+        await contract.getAddress(),
+        { batchId: batch.blockchainId, newStage }
+      );
+
+      return { batch: updatedBatch, txHash: tx.hash };
+    } catch (error: any) {
+      throw new Error(`Failed to execute updateStage: ${error.message}`);
+    }
   }
 }
